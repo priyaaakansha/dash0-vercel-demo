@@ -1,12 +1,8 @@
-import { registerOTel } from "@vercel/otel";
+import { registerOTel } from "@vercel/otel"
 
 export function register() {
   registerOTel({
-    serviceName: "vercel-nextjs-demo",
-    instrumentationConfig: {
-      fetch: {
-        propagateContextUrls: [],
-      },
-    },
-  });
+    serviceName: "bucket-list-app",
+    serviceVersion: "1.0.0",
+  })
 }
