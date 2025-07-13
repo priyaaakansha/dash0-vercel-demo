@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Edit2, Trash2, Target, Clock, CheckCircle2, AlertCircle } from "lucide-react"
 import { useBucketList, type BucketListItem } from "@/hooks/useBucketList"
-import { logger } from "@/lib/logger"
+import { traceUserAction } from "@/lib/tracing"
 
 const categories = [
   { value: "travel", label: "Travel", color: "bg-pink-100 text-pink-800" },
@@ -44,36 +43,14 @@ export default function BucketListApp() {
     progress: 0,
   })
 
-  // Log component mount
+  // Trace component mount
   useEffect(() => {
-    logger.info("BucketListApp component mounted", {
-      component: "BucketListApp",
-      action: "mount",
+    traceUserAction("page_load", {
+      "page.name": "bucket_list",
     })
-
-    return () => {
-      logger.info("BucketListApp component unmounted", {
-        component: "BucketListApp",
-        action: "unmount",
-      })
-    }
   }, [])
 
-  // Log category filter changes
-  useEffect(() => {
-    logger.logUserAction("filter_by_category", {
-      selectedCategory,
-      filteredItemCount:
-        selectedCategory === "all" ? items.length : items.filter((item) => item.category === selectedCategory).length,
-    })
-  }, [selectedCategory, items.length])
-
   const resetForm = () => {
-    logger.debug("Resetting form data", {
-      component: "BucketListApp",
-      action: "resetForm",
-    })
-
     setFormData({
       title: "",
       description: "",
@@ -87,66 +64,35 @@ export default function BucketListApp() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    logger.logUserAction("submit_bucket_list_form", {
-      isEditing: !!editingItem,
-      category: formData.category,
-      hasDeadline: !!formData.deadline,
-      initialProgress: formData.progress,
+    traceUserAction("form_submit", {
+      "form.type": editingItem ? "edit" : "create",
+      "form.category": formData.category,
     })
 
     try {
       if (editingItem) {
-        // Update existing item
-        const result = updateItem(editingItem.id, {
+        updateItem(editingItem.id, {
           ...formData,
           completed: formData.progress === 100,
         })
-
-        if (result) {
-          logger.info("Successfully updated bucket list item via form", {
-            component: "BucketListApp",
-            action: "handleSubmit",
-            itemId: editingItem.id,
-            operation: "update",
-          })
-        }
       } else {
-        // Add new item
-        const result = addItem({
+        addItem({
           ...formData,
           completed: formData.progress === 100,
         })
-
-        if (result) {
-          logger.info("Successfully added new bucket list item via form", {
-            component: "BucketListApp",
-            action: "handleSubmit",
-            itemId: result.id,
-            operation: "create",
-          })
-        }
       }
 
       resetForm()
       setIsDialogOpen(false)
     } catch (error) {
-      logger.error(
-        "Failed to submit bucket list form",
-        {
-          component: "BucketListApp",
-          action: "handleSubmit",
-          isEditing: !!editingItem,
-        },
-        error as Error,
-      )
+      console.error("Form submission failed:", error)
     }
   }
 
   const handleEdit = (item: BucketListItem) => {
-    logger.logUserAction("open_edit_dialog", {
-      itemId: item.id,
-      category: item.category,
-      title: item.title,
+    traceUserAction("edit_item_click", {
+      "item.id": item.id,
+      "item.category": item.category,
     })
 
     setEditingItem(item)
@@ -163,62 +109,45 @@ export default function BucketListApp() {
   const handleDelete = (id: string) => {
     const item = items.find((item) => item.id === id)
 
-    logger.logUserAction("delete_bucket_list_item_clicked", {
-      itemId: id,
-      category: item?.category,
-      title: item?.title,
+    traceUserAction("delete_item_click", {
+      "item.id": id,
+      "item.category": item?.category,
     })
 
     if (window.confirm("Are you sure you want to delete this goal?")) {
-      const success = deleteItem(id)
-
-      if (success) {
-        logger.info("User confirmed deletion of bucket list item", {
-          component: "BucketListApp",
-          action: "handleDelete",
-          itemId: id,
-        })
-      }
-    } else {
-      logger.info("User cancelled deletion of bucket list item", {
-        component: "BucketListApp",
-        action: "handleDelete",
-        itemId: id,
-        cancelled: true,
-      })
+      deleteItem(id)
     }
   }
 
   const handleToggleComplete = (id: string) => {
     const item = items.find((item) => item.id === id)
 
-    logger.logUserAction("toggle_completion_clicked", {
-      itemId: id,
-      category: item?.category,
-      title: item?.title,
-      currentStatus: item?.completed ? "completed" : "incomplete",
+    traceUserAction("toggle_complete_click", {
+      "item.id": id,
+      "item.category": item?.category,
+      "item.current_status": item?.completed ? "completed" : "incomplete",
     })
 
     toggleComplete(id)
   }
 
   const handleCategoryFilter = (category: string) => {
-    logger.logUserAction("category_filter_clicked", {
-      selectedCategory: category,
-      previousCategory: selectedCategory,
+    traceUserAction("category_filter", {
+      "filter.category": category,
+      "filter.previous": selectedCategory,
     })
 
     setSelectedCategory(category)
   }
 
   const handleDialogOpen = (open: boolean) => {
-    if (open) {
-      logger.logUserAction("open_add_goal_dialog")
+    traceUserAction(open ? "dialog_open" : "dialog_close", {
+      "dialog.type": "goal_form",
+      "dialog.mode": editingItem ? "edit" : "create",
+    })
+
+    if (open && !editingItem) {
       resetForm()
-    } else {
-      logger.logUserAction("close_goal_dialog", {
-        wasEditing: !!editingItem,
-      })
     }
     setIsDialogOpen(open)
   }
@@ -235,31 +164,7 @@ export default function BucketListApp() {
     return new Date(deadline) < new Date()
   }
 
-  // Log performance metrics periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      logger.debug("Performance metrics", {
-        component: "BucketListApp",
-        metrics: {
-          totalItems: stats.total,
-          completedItems: stats.completed,
-          overdueItems: stats.overdue,
-          averageProgress: stats.averageProgress.toFixed(2),
-          filteredItemsCount: filteredItems.length,
-          selectedCategory,
-        },
-      })
-    }, 30000) // Log every 30 seconds
-
-    return () => clearInterval(interval)
-  }, [stats, filteredItems.length, selectedCategory])
-
   if (isLoading) {
-    logger.debug("Rendering loading state", {
-      component: "BucketListApp",
-      state: "loading",
-    })
-
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
@@ -424,7 +329,9 @@ export default function BucketListApp() {
           {filteredItems.map((item) => (
             <Card
               key={item.id}
-              className={`transition-all duration-200 hover:shadow-lg ${item.completed ? "bg-green-50 border-green-200" : "bg-white"}`}
+              className={`transition-all duration-200 hover:shadow-lg ${
+                item.completed ? "bg-green-50 border-green-200" : "bg-white"
+              }`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
