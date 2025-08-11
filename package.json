@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@dash0/sdk-web": "^0.13.2",
     "@hookform/resolvers": "^3.9.1",
     "@opentelemetry/api": "latest",
     "@opentelemetry/api-logs": "latest",
@@ -44,7 +45,7 @@
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
-    "@vercel/otel": "latest",
+    "@vercel/otel": "^1.13.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

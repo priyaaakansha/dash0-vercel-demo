@@ -16,6 +16,23 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Edit2, Trash2, Target, Clock, CheckCircle2, AlertCircle } from "lucide-react"
 import { useBucketList, type BucketListItem } from "@/hooks/useBucketList"
 import { traceUserAction } from "@/lib/tracing"
+import { init } from "@dash0/sdk-web";
+import { addSignalAttribute } from "@dash0/sdk-web";
+
+addSignalAttribute("environment", "production");
+addSignalAttribute("version", "1.2.3");
+
+init({
+  serviceName: "websdk-aakansha",
+  endpoint: {
+    // Replace this with the endpoint url identified during preparation
+    url: "https://ingress.us-west-2.aws.dash0.com",
+    dataset: "websdk-aakansha",
+    // Replace this with your auth token you created earlier
+    // Ideally inject the value at build time to not commit the token to git, even if its effectively public
+    authToken: "auth_23ZXZ1pmHYDCWnKKHCBq3ecl2gcGaVPw",
+  },
+});
 
 const categories = [
   { value: "travel", label: "Travel", color: "bg-pink-100 text-pink-800" },
